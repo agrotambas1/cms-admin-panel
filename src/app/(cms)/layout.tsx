@@ -11,19 +11,10 @@ import { ReactNode, useEffect } from "react";
 import DashboardBreadcrumb from "./_components/cms-breadcrumb";
 import { AppSidebar } from "@/components/common/app-sidebar";
 import { cmsApi } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function CMSLayout({ children }: { children: ReactNode }) {
-  useEffect(() => {
-    cmsApi.get("/me").catch(async (error) => {
-      const status = error?.response?.status;
-      if (status === 401 || status === 403) {
-        try {
-          await cmsApi.post("/logout");
-        } catch {}
-        window.location.href = "/login";
-      }
-    });
-  }, []);
+  useAuth();
 
   return (
     <SidebarProvider>

@@ -36,11 +36,14 @@ export default function Login() {
 
   const onSubmit = async (data: LoginForm) => {
     try {
-      await cmsApi.post("/login", data);
+      // await cmsApi.post("/login", data);
 
-      // setTimeout(() => {
-      //   window.location.href = "/dashboard";
-      // }, 0);
+      // router.push("/dashboard");
+
+      const res = await cmsApi.post("/login", data);
+
+      localStorage.setItem("token", res.data.data.token); // ← tambah ini
+
       router.push("/dashboard");
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {

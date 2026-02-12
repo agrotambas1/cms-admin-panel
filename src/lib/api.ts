@@ -32,6 +32,16 @@ export const cmsApi = axios.create({
   withCredentials: true,
 });
 
+cmsApi.interceptors.request.use((config) => {
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
+
 cmsApi.interceptors.response.use(
   (response) => response,
   async (error) => {
