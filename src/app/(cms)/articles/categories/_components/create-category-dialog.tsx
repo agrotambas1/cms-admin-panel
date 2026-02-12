@@ -11,6 +11,7 @@ import { useCreateCategory } from "@/hooks/articles/use-category";
 import { CreateCategoryForm } from "@/validations/article/category-validation";
 import { useState } from "react";
 import { CategoryForm } from "./category-form";
+import { Plus } from "lucide-react";
 
 interface CreateCategoryDialogProps {
   onCategoryCreated: () => void;
@@ -50,7 +51,10 @@ export function CreateCategoryDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button>New Category</Button>
+        <Button>
+          <Plus className="h-4 w-4 mr-2" />
+          New Category
+        </Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-[525px]">

@@ -10,13 +10,18 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AxiosError } from "axios";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm, UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
 
 interface useArticlesParams extends ArticleFilters {
   page: number;
   limit: number;
+  isFeatured?: boolean;
+  serviceId?: string;
+  industryId?: string;
+  sortBy?: string;
+  order?: "asc" | "desc";
 }
 
 export function useArticles({
@@ -24,8 +29,12 @@ export function useArticles({
   status,
   categoryId,
   isFeatured,
+  serviceId,
+  industryId,
   page,
   limit,
+  sortBy = "createdAt",
+  order = "desc",
 }: useArticlesParams) {
   const [article, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,60 +45,57 @@ export function useArticles({
     total: 0,
   });
 
+  const fetchArticles = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      const { data } = await cmsApi.get("/articles", {
+        params: {
+          search,
+          status,
+          categoryId,
+          isFeatured,
+          serviceId,
+          industryId,
+          page,
+          limit,
+          sortBy,
+          order,
+        },
+      });
+
+      setArticles(data.data || data.article || data);
+      setPagination({
+        page: data.meta.page,
+        limit: data.meta.limit,
+        total: data.meta.total,
+      });
+
+      setError(null);
+    } catch (error) {
+      console.error(error);
+      setError("Failed to fetch article");
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    search,
+    status,
+    categoryId,
+    isFeatured,
+    serviceId,
+    industryId,
+    page,
+    limit,
+    sortBy,
+    order,
+  ]);
+
   useEffect(() => {
-    const fetchArticles = async () => {
-      try {
-        setLoading(true);
-
-        const { data } = await cmsApi.get("/articles", {
-          params: {
-            search,
-            status,
-            categoryId,
-            isFeatured,
-            page,
-            limit,
-          },
-        });
-
-        setArticles(data.data || data.article || data);
-        setPagination({
-          page: data.meta.page,
-          limit: data.meta.limit,
-          total: data.meta.total,
-        });
-
-        setError(null);
-      } catch (error) {
-        console.error(error);
-        setError("Failed to fetch article");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchArticles();
-  }, [search, status, categoryId, isFeatured, page, limit]);
+  }, [fetchArticles]);
 
-  const refetch = async () => {
-    const { data } = await cmsApi.get("/articles", {
-      params: {
-        search,
-        status,
-        categoryId,
-        isFeatured,
-        page,
-        limit,
-      },
-    });
-
-    setArticles(data.data || data.article || data);
-    setPagination({
-      page: data.meta?.page ?? page,
-      limit: data.meta?.limit || limit,
-      total: data.meta?.total ?? 0,
-    });
-  };
+  const refetch = () => fetchArticles();
 
   return { article, loading, error, pagination, refetch };
 }
@@ -145,15 +151,17 @@ export function useCreateArticle(onSuccess?: () => void) {
       content: "",
       thumbnailId: null,
       publicationId: null,
-      metaTitle: null,
-      metaDescription: null,
+      metaTitle: "",
+      metaDescription: "",
+      seoKeywords: [],
       status: "draft",
       publishedAt: null,
       scheduledAt: null,
       isFeatured: false,
       categoryId: "",
+      serviceId: "",
+      industryId: "",
       tags: [],
-      seoKeywords: [],
     },
   }) as UseFormReturn<CreateArticleForm>;
 
@@ -180,6 +188,7 @@ export function useCreateArticle(onSuccess?: () => void) {
       await cmsApi.post("/articles", {
         ...data,
         tags: data.tags ?? [],
+        seoKeywords: data.seoKeywords ?? [],
       });
 
       toast.success(`Article ${data.title} created successfully`);
@@ -233,15 +242,17 @@ export function useUpdateArticle(id: string, onSuccess?: () => void) {
       content: "",
       thumbnailId: null,
       publicationId: null,
-      metaTitle: null,
-      metaDescription: null,
+      metaTitle: "",
+      metaDescription: "",
+      seoKeywords: [],
       status: "draft",
       publishedAt: null,
       scheduledAt: null,
       isFeatured: false,
       categoryId: "",
+      serviceId: "",
+      industryId: "",
       tags: [],
-      seoKeywords: [],
     },
   }) as UseFormReturn<UpdateArticleForm>;
 
@@ -258,17 +269,15 @@ export function useUpdateArticle(id: string, onSuccess?: () => void) {
         publicationId: article.publicationId,
         metaTitle: article.metaTitle,
         metaDescription: article.metaDescription,
+        seoKeywords: article.seoKeywords || [],
         status: article.status as "draft" | "published" | "scheduled",
         publishedAt: article.publishedAt,
         scheduledAt: article.scheduledAt,
         isFeatured: article.isFeatured,
         categoryId: article.categoryId,
+        serviceId: article.serviceId,
+        industryId: article.industryId,
         tags: article.tags?.map((tag) => tag.id) || [],
-        seoKeywords:
-          article.seoKeywords?.map((kw) => ({
-            keyword: kw.keyword,
-            order: kw.order,
-          })) || [],
       });
       setIsSlugTouched(true);
       setInitializing(false);
@@ -298,6 +307,7 @@ export function useUpdateArticle(id: string, onSuccess?: () => void) {
       await cmsApi.put(`/articles/${id}`, {
         ...data,
         tags: data.tags ?? [],
+        seoKeywords: data.seoKeywords ?? [],
       });
 
       toast.success(`Article ${data.title} updated successfully`);

@@ -14,8 +14,14 @@ import { cmsApi } from "@/lib/api";
 
 export default function CMSLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
-    cmsApi.get("/me").catch(() => {
-      window.location.href = "/login";
+    cmsApi.get("/me").catch(async (error) => {
+      const status = error?.response?.status;
+      if (status === 401 || status === 403) {
+        try {
+          await cmsApi.post("/logout");
+        } catch {}
+        window.location.href = "/login";
+      }
     });
   }, []);
 

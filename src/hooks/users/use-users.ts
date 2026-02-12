@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import { User, UserFilters } from "../../types/users/user";
 import { PaginationState } from "@/components/common/table/data-table";
@@ -30,55 +30,39 @@ export function useUsers({ search, role, page, limit }: UseUsersParams) {
     total: 0,
   });
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setLoading(true);
+  const fetchUsers = useCallback(async () => {
+    try {
+      setLoading(true);
 
-        const { data } = await cmsApi.get("/users", {
-          params: {
-            search,
-            role,
-            page,
-            limit,
-          },
-        });
+      const { data } = await cmsApi.get("/users", {
+        params: {
+          search,
+          role,
+          page,
+          limit,
+        },
+      });
 
-        setUsers(data.data || data.users || data);
-        setPagination({
-          page: data.meta.page,
-          limit: data.meta.limit,
-          total: data.meta.total,
-        });
-        setError(null);
-      } catch (error) {
-        console.error(error);
-        setError("Failed to fetch users");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUsers();
+      setUsers(data.data || data.users || data);
+      setPagination({
+        page: data.meta.page,
+        limit: data.meta.limit,
+        total: data.meta.total,
+      });
+      setError(null);
+    } catch (error) {
+      console.error(error);
+      setError("Failed to fetch users");
+    } finally {
+      setLoading(false);
+    }
   }, [search, role, page, limit]);
 
-  const refetch = async () => {
-    const { data } = await cmsApi.get("/users", {
-      params: {
-        search,
-        role,
-        page,
-        limit,
-      },
-    });
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
-    setUsers(data.data || data.users || data);
-    setPagination({
-      page: data.meta?.page ?? page,
-      limit: data.meta?.limit ?? limit,
-      total: data.meta?.total ?? 0,
-    });
-  };
+  const refetch = () => fetchUsers();
 
   return { users, loading, error, pagination, refetch };
 }

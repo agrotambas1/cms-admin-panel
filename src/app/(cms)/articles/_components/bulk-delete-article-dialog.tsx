@@ -29,17 +29,17 @@ export function BulkDeleteArticlesDialog({
 }: BulkDeleteArticlesDialogProps) {
   const [confirmText, setConfirmText] = useState("");
 
+  const handleClose = () => {
+    setConfirmText("");
+    onOpenChange(false);
+  };
+
   const { loading, bulkDeleteArticles } = useBulkDeleteArticles({
     onSuccess: () => {
       handleClose();
       onDeleted();
     },
   });
-
-  const handleClose = () => {
-    setConfirmText("");
-    onOpenChange(false);
-  };
 
   const handleDelete = async () => {
     if (confirmText !== "DELETE") return;

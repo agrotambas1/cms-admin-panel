@@ -22,6 +22,7 @@ import { cmsApi } from "@/lib/api";
 import { LoginForm, loginSchema } from "@/validations/auth-validation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -31,16 +32,30 @@ export default function Login() {
     defaultValues: INITIAL_LOGIN_FORM,
   });
 
+  const router = useRouter();
+
   const onSubmit = async (data: LoginForm) => {
     try {
       await cmsApi.post("/login", data);
 
-      setTimeout(() => {
-        window.location.href = "/dashboard";
-      }, 0);
+      // setTimeout(() => {
+      //   window.location.href = "/dashboard";
+      // }, 0);
+      router.push("/dashboard");
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         const status = error.response?.status;
+        const message = error.response?.data?.message as string | undefined;
+
+        if (status === 401) {
+          const isNotExist = message === "User does not exist";
+          toast.error("Login failed", {
+            description: isNotExist
+              ? "User does not exist."
+              : "Wrong username or password.",
+          });
+          return;
+        }
 
         if (status === 403) {
           toast.error("Login failed", {

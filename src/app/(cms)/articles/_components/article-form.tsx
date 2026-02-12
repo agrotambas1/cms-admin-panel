@@ -26,7 +26,7 @@ import { Category } from "@/types/article/category";
 import { Tag } from "@/types/article/tag";
 import { Badge } from "@/components/ui/badge";
 import { X, Plus, CalendarIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Popover,
   PopoverContent,
@@ -47,6 +47,10 @@ import { getMediaUrl } from "@/lib/media-utils";
 import { MediaFile } from "@/types/media/media";
 import { Editor } from "@tinymce/tinymce-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { cmsApi } from "@/lib/api";
+import Link from "next/link";
+import { Service } from "@/types/service/service";
+import { Industry } from "@/types/industry/industry";
 
 interface ArticleFormProps {
   form: UseFormReturn<CreateArticleForm>;
@@ -58,8 +62,11 @@ interface ArticleFormProps {
   resetSlug: () => void;
   categories: Category[];
   tags: Tag[];
+  services: Service[];
+  industries: Industry[];
   submitLabel?: string;
   initialThumbnail?: MediaFile | null;
+  initialPublication?: MediaFile | null;
 }
 
 export function ArticleForm({
@@ -72,20 +79,25 @@ export function ArticleForm({
   resetSlug,
   categories,
   tags,
+  services,
+  industries,
   submitLabel = "Create Article",
   initialThumbnail,
+  initialPublication,
 }: ArticleFormProps) {
   const [newKeyword, setNewKeyword] = useState("");
 
   const thumbnailId = form.watch("thumbnailId");
   const publicationId = form.watch("publicationId");
 
+  const publishedAt = form.watch("publishedAt");
+
   const [selectedThumbnail, setSelectedThumbnail] = useState<MediaFile | null>(
     initialThumbnail ?? null,
   );
 
   const [selectedPublication, setSelectedPublication] =
-    useState<MediaFile | null>(null);
+    useState<MediaFile | null>(initialPublication ?? null);
 
   const [open, setOpen] = useState(false);
   const [openPublication, setOpenPublication] = useState(false);
@@ -94,12 +106,8 @@ export function ArticleForm({
     if (!newKeyword.trim()) return;
 
     const currentKeywords = form.getValues("seoKeywords") || [];
-    const newOrder = currentKeywords.length;
 
-    form.setValue("seoKeywords", [
-      ...currentKeywords,
-      { keyword: newKeyword.trim(), order: newOrder },
-    ]);
+    form.setValue("seoKeywords", [...currentKeywords, newKeyword.trim()]);
     setNewKeyword("");
   };
 
@@ -118,9 +126,6 @@ export function ArticleForm({
       currentKeywords[index - 1],
       currentKeywords[index],
     ];
-    currentKeywords.forEach((kw, i) => {
-      kw.order = i;
-    });
     form.setValue("seoKeywords", currentKeywords);
   };
 
@@ -131,13 +136,36 @@ export function ArticleForm({
       currentKeywords[index + 1],
       currentKeywords[index],
     ];
-    currentKeywords.forEach((kw, i) => {
-      kw.order = i;
-    });
     form.setValue("seoKeywords", currentKeywords);
   };
 
   const seoKeywords = form.watch("seoKeywords") || [];
+
+  const [showWarning, setShowWarning] = useState(false);
+
+  const handleFormSubmit = (data: CreateArticleForm) => {
+    if (
+      publishedAt &&
+      (data.status === "scheduled" || data.status === "draft")
+    ) {
+      setShowWarning(true);
+      return;
+    }
+
+    onSubmit(data);
+  };
+
+  const handleConfirmStatusChange = () => {
+    setShowWarning(false);
+
+    const data = form.getValues();
+
+    if (data.status === "scheduled" || data.status === "draft") {
+      data.publishedAt = null;
+    }
+
+    onSubmit(data);
+  };
 
   return (
     <>
@@ -149,6 +177,9 @@ export function ArticleForm({
                 <Card>
                   <CardHeader>
                     <h2 className="text-lg font-semibold">Basic Information</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Enter basic information about the article
+                    </p>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
@@ -157,7 +188,9 @@ export function ArticleForm({
                         name="title"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Title</FormLabel>
+                            <FormLabel>
+                              Title <span className="text-destructive">*</span>
+                            </FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
@@ -178,7 +211,9 @@ export function ArticleForm({
                         name="slug"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Slug</FormLabel>
+                            <FormLabel>
+                              Slug <span className="text-destructive">*</span>
+                            </FormLabel>
                             <div className="flex items-center gap-2">
                               <FormControl>
                                 <Input
@@ -272,7 +307,10 @@ export function ArticleForm({
                         name="excerpt"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Excerpt</FormLabel>
+                            <FormLabel>
+                              Excerpt{" "}
+                              <span className="text-destructive">*</span>
+                            </FormLabel>
                             <FormControl>
                               <Textarea
                                 {...field}
@@ -291,7 +329,10 @@ export function ArticleForm({
                         name="categoryId"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Category</FormLabel>
+                            <FormLabel>
+                              Category{" "}
+                              <span className="text-destructive">*</span>
+                            </FormLabel>
                             <Select
                               onValueChange={field.onChange}
                               value={field.value}
@@ -322,7 +363,9 @@ export function ArticleForm({
                         name="tags"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Tags</FormLabel>
+                            <FormLabel>
+                              Tags <span className="text-destructive">*</span>
+                            </FormLabel>
                             <Select
                               onValueChange={(value) => {
                                 const current = field.value || [];
@@ -376,6 +419,120 @@ export function ArticleForm({
                           </FormItem>
                         )}
                       />
+
+                      {/* <FormField
+                        control={form.control}
+                        name="serviceId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Service</FormLabel>
+                            <Select
+                              onValueChange={(val) =>
+                                field.onChange(val === "none" ? null : val)
+                              }
+                              value={field.value || ""}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Select service" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {services.map((service) => (
+                                  <SelectItem
+                                    key={service.id}
+                                    value={service.id}
+                                  >
+                                    {service.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormDescription>
+                              Select one solution
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      /> */}
+
+                      <FormField
+                        control={form.control}
+                        name="serviceId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Service</FormLabel>
+                            <Select
+                              onValueChange={(val) =>
+                                field.onChange(val === "__NONE__" ? null : val)
+                              }
+                              value={field.value ?? "__NONE__"}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Select service" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="__NONE__">
+                                  Deselect
+                                </SelectItem>
+                                {services.map((service) => (
+                                  <SelectItem
+                                    key={service.id}
+                                    value={service.id}
+                                  >
+                                    {service.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormDescription>
+                              Select one service
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="industryId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Industry</FormLabel>
+                            <Select
+                              onValueChange={(val) =>
+                                field.onChange(val === "__NONE__" ? null : val)
+                              }
+                              value={field.value ?? "__NONE__"}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Select industry" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="__NONE__">
+                                  Deselect
+                                </SelectItem>
+                                {industries.map((industry) => (
+                                  <SelectItem
+                                    key={industry.id}
+                                    value={industry.id}
+                                  >
+                                    {industry.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormDescription>
+                              Select one industry
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
                   </CardContent>
                 </Card>
@@ -385,6 +542,9 @@ export function ArticleForm({
                     <h2 className="text-lg font-semibold">
                       Publishing Settings
                     </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Configure how the article is published
+                    </p>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
@@ -462,7 +622,9 @@ export function ArticleForm({
                         name="status"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Status</FormLabel>
+                            <FormLabel>
+                              Status <span className="text-destructive">*</span>
+                            </FormLabel>
                             <Select
                               onValueChange={field.onChange}
                               value={field.value}
@@ -520,19 +682,113 @@ export function ArticleForm({
                                   className="w-auto p-0"
                                   align="start"
                                 >
-                                  <Calendar
-                                    mode="single"
-                                    selected={
-                                      field.value
-                                        ? new Date(field.value)
-                                        : undefined
-                                    }
-                                    onSelect={(date) => {
-                                      if (!date) return;
-                                      field.onChange(date.toISOString());
-                                    }}
-                                    initialFocus
-                                  />
+                                  <div className="p-3 space-y-3">
+                                    <Calendar
+                                      mode="single"
+                                      selected={
+                                        field.value
+                                          ? new Date(field.value)
+                                          : undefined
+                                      }
+                                      onSelect={(date) => {
+                                        if (!date) return;
+
+                                        const currentDate = field.value
+                                          ? new Date(field.value)
+                                          : new Date();
+                                        date.setHours(currentDate.getHours());
+                                        date.setMinutes(
+                                          currentDate.getMinutes(),
+                                        );
+
+                                        field.onChange(date.toISOString());
+                                      }}
+                                      initialFocus
+                                    />
+
+                                    <div className="border-t pt-3 space-y-2">
+                                      <p className="text-sm font-medium">
+                                        Time
+                                      </p>
+                                      <div className="flex gap-2">
+                                        <Select
+                                          value={
+                                            field.value
+                                              ? new Date(field.value)
+                                                  .getHours()
+                                                  .toString()
+                                              : "0"
+                                          }
+                                          onValueChange={(hour) => {
+                                            const date = field.value
+                                              ? new Date(field.value)
+                                              : new Date();
+                                            date.setHours(parseInt(hour));
+                                            field.onChange(date.toISOString());
+                                          }}
+                                        >
+                                          <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="HH" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {Array.from(
+                                              { length: 24 },
+                                              (_, i) => (
+                                                <SelectItem
+                                                  key={i}
+                                                  value={i.toString()}
+                                                >
+                                                  {i
+                                                    .toString()
+                                                    .padStart(2, "0")}
+                                                </SelectItem>
+                                              ),
+                                            )}
+                                          </SelectContent>
+                                        </Select>
+
+                                        <span className="flex items-center">
+                                          :
+                                        </span>
+
+                                        <Select
+                                          value={
+                                            field.value
+                                              ? new Date(field.value)
+                                                  .getMinutes()
+                                                  .toString()
+                                              : "0"
+                                          }
+                                          onValueChange={(minute) => {
+                                            const date = field.value
+                                              ? new Date(field.value)
+                                              : new Date();
+                                            date.setMinutes(parseInt(minute));
+                                            field.onChange(date.toISOString());
+                                          }}
+                                        >
+                                          <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="MM" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {Array.from(
+                                              { length: 60 },
+                                              (_, i) => (
+                                                <SelectItem
+                                                  key={i}
+                                                  value={i.toString()}
+                                                >
+                                                  {i
+                                                    .toString()
+                                                    .padStart(2, "0")}
+                                                </SelectItem>
+                                              ),
+                                            )}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+                                  </div>
                                 </PopoverContent>
                               </Popover>
 
@@ -556,7 +812,7 @@ export function ArticleForm({
                                     <Button
                                       variant="outline"
                                       className={cn(
-                                        "w-[240px] justify-start text-left font-normal",
+                                        "w-full justify-start text-left font-normal",
                                         !field.value && "text-muted-foreground",
                                       )}
                                     >
@@ -575,19 +831,118 @@ export function ArticleForm({
                                   className="w-auto p-0"
                                   align="start"
                                 >
-                                  <Calendar
-                                    mode="single"
-                                    selected={
-                                      field.value
-                                        ? new Date(field.value)
-                                        : undefined
-                                    }
-                                    onSelect={(date) => {
-                                      if (!date) return;
-                                      field.onChange(date.toISOString());
-                                    }}
-                                    initialFocus
-                                  />
+                                  <div className="p-3 space-y-3">
+                                    <Calendar
+                                      mode="single"
+                                      selected={
+                                        field.value
+                                          ? new Date(field.value)
+                                          : undefined
+                                      }
+                                      onSelect={(date) => {
+                                        if (!date) return;
+
+                                        const currentDate = field.value
+                                          ? new Date(field.value)
+                                          : new Date();
+                                        date.setHours(currentDate.getHours());
+                                        date.setMinutes(
+                                          currentDate.getMinutes(),
+                                        );
+
+                                        field.onChange(date.toISOString());
+                                      }}
+                                      disabled={(date) => {
+                                        const today = new Date();
+                                        today.setHours(0, 0, 0, 0);
+                                        return date < today;
+                                      }}
+                                      initialFocus
+                                    />
+
+                                    <div className="border-t pt-3 space-y-2">
+                                      <p className="text-sm font-medium">
+                                        Time
+                                      </p>
+                                      <div className="flex gap-2">
+                                        <Select
+                                          value={
+                                            field.value
+                                              ? new Date(field.value)
+                                                  .getHours()
+                                                  .toString()
+                                              : "0"
+                                          }
+                                          onValueChange={(hour) => {
+                                            const date = field.value
+                                              ? new Date(field.value)
+                                              : new Date();
+                                            date.setHours(parseInt(hour));
+                                            field.onChange(date.toISOString());
+                                          }}
+                                        >
+                                          <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="HH" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {Array.from(
+                                              { length: 24 },
+                                              (_, i) => (
+                                                <SelectItem
+                                                  key={i}
+                                                  value={i.toString()}
+                                                >
+                                                  {i
+                                                    .toString()
+                                                    .padStart(2, "0")}
+                                                </SelectItem>
+                                              ),
+                                            )}
+                                          </SelectContent>
+                                        </Select>
+
+                                        <span className="flex items-center">
+                                          :
+                                        </span>
+
+                                        <Select
+                                          value={
+                                            field.value
+                                              ? new Date(field.value)
+                                                  .getMinutes()
+                                                  .toString()
+                                              : "0"
+                                          }
+                                          onValueChange={(minute) => {
+                                            const date = field.value
+                                              ? new Date(field.value)
+                                              : new Date();
+                                            date.setMinutes(parseInt(minute));
+                                            field.onChange(date.toISOString());
+                                          }}
+                                        >
+                                          <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="MM" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {Array.from(
+                                              { length: 60 },
+                                              (_, i) => (
+                                                <SelectItem
+                                                  key={i}
+                                                  value={i.toString()}
+                                                >
+                                                  {i
+                                                    .toString()
+                                                    .padStart(2, "0")}
+                                                </SelectItem>
+                                              ),
+                                            )}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+                                  </div>
                                 </PopoverContent>
                               </Popover>
 
@@ -626,6 +981,9 @@ export function ArticleForm({
                 <Card>
                   <CardHeader>
                     <h2 className="text-lg font-semibold">SEO Settings</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Optimize your article for search engines
+                    </p>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
@@ -634,7 +992,10 @@ export function ArticleForm({
                         name="metaTitle"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Meta Title (Optional)</FormLabel>
+                            <FormLabel>
+                              Meta Title{" "}
+                              <span className="text-destructive">*</span>
+                            </FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
@@ -655,7 +1016,10 @@ export function ArticleForm({
                         name="metaDescription"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Meta Description (Optional)</FormLabel>
+                            <FormLabel>
+                              Meta Description{" "}
+                              <span className="text-destructive">*</span>
+                            </FormLabel>
                             <FormControl>
                               <Textarea
                                 {...field}
@@ -710,7 +1074,7 @@ export function ArticleForm({
                                       className="flex items-center justify-between gap-2 p-2 bg-muted rounded"
                                     >
                                       <span className="text-sm">
-                                        {index + 1}. {keyword.keyword}
+                                        {index + 1}. {keyword}{" "}
                                       </span>
                                       <div className="flex gap-1">
                                         <Button
@@ -765,6 +1129,9 @@ export function ArticleForm({
                 <Card>
                   <CardHeader>
                     <h2 className="text-lg font-semibold">Content</h2>
+                    <p className="text-sm text-muted-foreground">
+                      The content of the article
+                    </p>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
@@ -774,7 +1141,10 @@ export function ArticleForm({
                           name="content"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Content</FormLabel>
+                              <FormLabel>
+                                Content{" "}
+                                <span className="text-destructive">*</span>
+                              </FormLabel>
                               <FormControl>
                                 <Editor
                                   apiKey={
@@ -802,19 +1172,27 @@ export function ArticleForm({
                                         blobInfo.blob(),
                                         blobInfo.filename(),
                                       );
-                                      const res = await fetch(
-                                        "http://localhost:4000/api/cms/media",
-                                        {
-                                          method: "POST",
-                                          credentials: "include",
-                                          body: formData,
-                                        },
-                                      );
-                                      if (!res.ok)
+
+                                      try {
+                                        const response = await cmsApi.post(
+                                          "/media",
+                                          formData,
+                                          {
+                                            headers: {
+                                              "Content-Type":
+                                                "multipart/form-data",
+                                            },
+                                          },
+                                        );
+
+                                        const json: { url: string } =
+                                          response.data;
+
+                                        return `${process.env.NEXT_PUBLIC_CMS_API_URL?.replace("/api/cms", "")}${json.url}`;
+                                      } catch (error) {
+                                        console.error(error);
                                         throw new Error("Image upload failed");
-                                      const json: { url: string } =
-                                        await res.json();
-                                      return `http://localhost:4000${json.url}`;
+                                      }
                                     },
 
                                     plugins: [
@@ -847,7 +1225,7 @@ export function ArticleForm({
                                     ],
 
                                     toolbar:
-                                      "undo redo | accordion accordionremove | blocks fontfamily fontsize | bold italic underline strikethrough | align numlist bullist | link image | table media | lineheight outdent indent| forecolor backcolor removeformat | charmap emoticons | code fullscreen preview | save print | pagebreak anchor codesample | ltr rtl",
+                                      "undo redo | accordion accordionremove | blocks | bold italic underline strikethrough | align numlist bullist | link image | table media | lineheight outdent indent| forecolor backcolor removeformat | charmap emoticons | code fullscreen preview | save print | pagebreak anchor codesample | ltr rtl",
 
                                     content_style: `
                                       body {
@@ -864,14 +1242,22 @@ export function ArticleForm({
                           )}
                         />
                       </div>
-                      <div className="flex items-center border-t pt-4 mt-2 justify-end gap-4">
-                        <Button type="submit" disabled={loading}>
-                          {loading ? "Saving..." : submitLabel}
-                        </Button>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
+
+                <div className="flex items-center  justify-end gap-4">
+                  <Button variant="ghost" disabled={loading}>
+                    <Link href="/articles">Cancel</Link>
+                  </Button>
+                  <Button
+                    type="submit"
+                    onClick={form.handleSubmit(handleFormSubmit)}
+                    disabled={loading}
+                  >
+                    {loading ? "Saving..." : submitLabel}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -889,6 +1275,8 @@ export function ArticleForm({
 
           <div className="overflow-y-auto">
             <MediaPageContent
+              defaultType="image"
+              hideTypeFilter={true}
               onSelectImageExternal={(media) => {
                 form.setValue("thumbnailId", media.id);
                 setSelectedThumbnail(media);
@@ -910,12 +1298,38 @@ export function ArticleForm({
 
           <div className="overflow-y-auto">
             <MediaPageContent
+              defaultType="document"
+              hideTypeFilter={true}
               onSelectImageExternal={(media) => {
                 form.setValue("publicationId", media.id);
                 setSelectedPublication(media);
                 setOpenPublication(false);
               }}
             />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showWarning} onOpenChange={setShowWarning}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>⚠️ SEO Warning</DialogTitle>
+            <DialogDescription>
+              This article has already been published and may be indexed by
+              search engines. Changing the status to [<b>Scheduled</b>] will
+              make it unavailable, which could negatively impact SEO.
+              <br />
+              <br />
+              Are you sure you want to continue?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setShowWarning(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmStatusChange}>
+              Yes, Change Status
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

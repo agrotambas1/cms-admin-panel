@@ -1,9 +1,13 @@
 import { z } from "zod";
 
-const seoKeywordSchema = z.object({
-  keyword: z.string().min(1, "Keyword is required"),
-  order: z.number(),
-});
+const containsEmoji = (text: string) => {
+  const emojiRegex =
+    /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1F018}-\u{1F270}\u{238C}-\u{2454}\u{20D0}-\u{20FF}]/u;
+
+  const strippedText = text.replace(/<[^>]*>/g, "");
+
+  return emojiRegex.test(strippedText);
+};
 
 export const CreateArticleSchema = z.object({
   title: z
@@ -28,7 +32,10 @@ export const CreateArticleSchema = z.object({
   content: z
     .string()
     .min(1, "Content is required")
-    .min(50, "Content must be at least 50 characters"),
+    .min(50, "Content must be at least 50 characters")
+    .refine((value) => !containsEmoji(value), {
+      message: "Content should not contain emojis or icons",
+    }),
 
   thumbnailId: z.string().uuid("Invalid thumbnail ID").optional().nullable(),
 
@@ -41,14 +48,18 @@ export const CreateArticleSchema = z.object({
   metaTitle: z
     .string()
     .max(60, "Meta title should not exceed 60 characters")
-    .optional()
-    .nullable(),
+    .min(1, "Meta title is required"),
 
   metaDescription: z
     .string()
     .max(160, "Meta description should not exceed 160 characters")
+    .min(1, "Meta description is required"),
+
+  seoKeywords: z
+    .array(z.string().min(1, "Keyword cannot be empty"))
     .optional()
-    .nullable(),
+    .nullable()
+    .default([]),
 
   status: z.enum(["draft", "published", "scheduled"], {
     message: "Status must be draft, published, or scheduled",
@@ -60,14 +71,29 @@ export const CreateArticleSchema = z.object({
 
   isFeatured: z.boolean(),
 
-  categoryId: z.string().uuid("Invalid category ID"),
+  categoryId: z.string().uuid("Category is required"),
 
   tags: z.array(z.string().uuid()).min(1, "Tags are required"),
 
-  seoKeywords: z.array(seoKeywordSchema).default([]),
+  serviceId: z.preprocess(
+    (val) => (val === "none" || val === "" ? null : val),
+    z.string().uuid("Invalid solution ID").optional().nullable(),
+  ),
+
+  industryId: z.preprocess(
+    (val) => (val === "none" || val === "" ? null : val),
+    z.string().uuid("Invalid industry ID").optional().nullable(),
+  ),
 });
 
 export const UpdateArticleSchema = CreateArticleSchema;
+
+// export const UpdateArticleSchema = CreateArticleSchema.partial().extend({
+//   tags: z
+//     .array(z.string().uuid("Invalid tag ID"))
+//     .min(1, "At least one tag is required")
+//     .optional(),
+// });
 
 export type CreateArticleForm = z.infer<typeof CreateArticleSchema>;
 export type UpdateArticleForm = z.infer<typeof UpdateArticleSchema>;

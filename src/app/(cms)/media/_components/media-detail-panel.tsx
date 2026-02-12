@@ -12,6 +12,8 @@ import { useDownloadMedia, useUpdateMedia } from "@/hooks/media/use-media";
 import { getMediaUrl } from "@/lib/media-utils";
 import { cmsApi } from "@/lib/api";
 import { toast } from "sonner";
+import { canDelete, canEdit } from "@/lib/permission";
+import { useCurrentUser } from "@/hooks/auth/use-current-user";
 
 interface MediaDetailPanelProps {
   selectedImage: MediaFile | null;
@@ -26,6 +28,8 @@ export function MediaDetailPanel({
   onUpdate,
   onDelete,
 }: MediaDetailPanelProps) {
+  const { role, loading: authLoading } = useCurrentUser();
+
   const [deleteOpen, setDeleteOpen] = useState(false);
   const { updating, updateMedia } = useUpdateMedia({
     media: selectedImage!,
@@ -53,6 +57,8 @@ export function MediaDetailPanel({
       url: selectedImage.url,
     });
   };
+
+  if (authLoading) return null;
 
   return (
     <>
@@ -119,6 +125,7 @@ export function MediaDetailPanel({
                 value={selectedImage.title ?? ""}
                 onChange={(e) => onUpdate("title", e.target.value)}
                 placeholder="Title..."
+                disabled={!canEdit(role)}
               />
             </div>
 
@@ -129,12 +136,18 @@ export function MediaDetailPanel({
                 value={selectedImage.altText ?? ""}
                 onChange={(e) => onUpdate("altText", e.target.value)}
                 placeholder="Alt text..."
+                disabled={!canEdit(role)}
               />
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="url">URL</Label>
-              <Input id="url" value={mediaUrl} readOnly />
+              <Input
+                id="url"
+                value={mediaUrl}
+                readOnly
+                disabled={!canEdit(role)}
+              />
             </div>
 
             <div className="space-y-1.5">
@@ -145,6 +158,7 @@ export function MediaDetailPanel({
                 value={selectedImage.caption ?? ""}
                 onChange={(e) => onUpdate("caption", e.target.value)}
                 placeholder="Caption..."
+                disabled={!canEdit(role)}
               />
             </div>
 
@@ -156,18 +170,23 @@ export function MediaDetailPanel({
                 value={selectedImage.description ?? ""}
                 onChange={(e) => onUpdate("description", e.target.value)}
                 placeholder="Description..."
+                disabled={!canEdit(role)}
               />
             </div>
           </div>
 
           <div className="flex gap-2 pt-4 border-t">
-            <Button onClick={handleSave} disabled={updating}>
-              {updating ? "Saving..." : "Save Changes"}
-            </Button>
+            {canEdit(role) && (
+              <Button onClick={handleSave} disabled={updating}>
+                {updating ? "Saving..." : "Save Changes"}
+              </Button>
+            )}
 
-            <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
-              Delete Attachment
-            </Button>
+            {canDelete(role) && (
+              <Button variant="outline" onClick={() => setDeleteOpen(true)}>
+                Delete Attachment
+              </Button>
+            )}
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { cmsApi } from "@/lib/api";
 import { PaginationState } from "@/components/common/table/data-table";
 import { MediaFile } from "../../types/media/media";
@@ -9,6 +9,7 @@ import { AxiosError } from "axios";
 
 export interface MediaFilters {
   search?: string;
+  type?: string;
 }
 
 interface UseMediaParams extends MediaFilters {
@@ -16,7 +17,7 @@ interface UseMediaParams extends MediaFilters {
   limit: number;
 }
 
-export function useMedia({ search, page, limit }: UseMediaParams) {
+export function useMedia({ search, page, limit, type }: UseMediaParams) {
   const [mediaList, setMediaList] = useState<MediaFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,13 +27,14 @@ export function useMedia({ search, page, limit }: UseMediaParams) {
     total: 0,
   });
 
-  const fetchMedia = async () => {
+  const fetchMedia = useCallback(async () => {
     try {
       setLoading(true);
 
       const { data } = await cmsApi.get("/media", {
         params: {
           search,
+          type: type && type !== "all" ? type : undefined,
           page,
           limit,
         },
@@ -51,18 +53,20 @@ export function useMedia({ search, page, limit }: UseMediaParams) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, page, limit, type]);
 
   useEffect(() => {
     fetchMedia();
-  }, [search, page, limit]);
+  }, [fetchMedia]);
+
+  const refetch = () => fetchMedia();
 
   return {
     mediaList,
     loading,
     error,
     pagination,
-    refetch: fetchMedia,
+    refetch,
   };
 }
 
@@ -111,7 +115,10 @@ export function useUploadMedia(onSuccess?: () => void) {
           successCount++;
         } catch (error) {
           console.error(`Error uploading ${file.name}:`, error);
-          errors.push(`${file.name} failed to upload`);
+          const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+          errors.push(
+            `${file.name} - file size ${fileSizeMB}MB exceeds maximum 10MB`,
+          );
         }
       }
 
@@ -122,12 +129,18 @@ export function useUploadMedia(onSuccess?: () => void) {
         onSuccess?.();
       }
 
+      // if (errors.length > 0) {
+      //   toast.error(
+      //     `${errors.length} ${
+      //       errors.length === 1 ? "file" : "files"
+      //     } failed to upload`,
+      //   );
+      // }
+
       if (errors.length > 0) {
-        toast.error(
-          `${errors.length} ${
-            errors.length === 1 ? "file" : "files"
-          } failed to upload`,
-        );
+        errors.forEach((error) => {
+          toast.error(error);
+        });
       }
 
       return { success: successCount > 0, successCount, errors };

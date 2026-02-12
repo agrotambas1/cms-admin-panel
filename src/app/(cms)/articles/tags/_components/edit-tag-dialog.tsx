@@ -1,28 +1,10 @@
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useUpdateTag } from "@/hooks/articles/use-tag";
 import { Tag } from "@/types/article/tag";
 import { UpdateTagForm } from "@/validations/article/tag-validation";
@@ -31,6 +13,7 @@ import { TagForm } from "./tag-form";
 interface UpdateTagDialogProps {
   tag: Tag;
   open: boolean;
+  canEdit: boolean;
   onOpenChange: (open: boolean) => void;
   onTagUpdated: () => void;
 }
@@ -38,6 +21,7 @@ interface UpdateTagDialogProps {
 export function UpdateTagDialog({
   tag,
   open,
+  canEdit,
   onOpenChange,
   onTagUpdated,
 }: UpdateTagDialogProps) {
@@ -52,6 +36,7 @@ export function UpdateTagDialog({
   } = useUpdateTag({
     tag,
     open,
+    canEdit,
     onSuccess: () => {
       onOpenChange(false);
       onTagUpdated();

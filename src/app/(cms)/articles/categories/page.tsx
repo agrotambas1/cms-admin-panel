@@ -9,8 +9,12 @@ import { useCategories } from "../../../../hooks/articles/use-category";
 import { CreateCategoryDialog } from "./_components/create-category-dialog";
 import { UpdateCategoryDialog } from "./_components/edit-category-dialog";
 import { DeleteCategoryDialog } from "./_components/delete-category-dialog";
+import { canCreate, canDelete, canEdit } from "@/lib/permission";
+import { useCurrentUser } from "@/hooks/auth/use-current-user";
 
 export default function ArticlesCategoriesPage() {
+  const { role, loading: authLoading } = useCurrentUser();
+
   const [searchValue, setSearchValue] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -29,7 +33,11 @@ export default function ArticlesCategoriesPage() {
   const columns = getCategoryColumns({
     onEdit: (category) => setEditingCategory(category),
     onDelete: (category) => setDeletingCategory(category),
+    canDelete: canDelete(role),
+    canEdit: canEdit(role),
   });
+
+  if (authLoading) return null;
 
   return (
     <div className="w-full space-y-4">
@@ -41,7 +49,9 @@ export default function ArticlesCategoriesPage() {
           searchPlaceholder="Search categories..."
         />
 
-        <CreateCategoryDialog onCategoryCreated={refetch} />
+        {canCreate(role) && (
+          <CreateCategoryDialog onCategoryCreated={refetch} />
+        )}
       </div>
 
       <DataTable
@@ -59,6 +69,7 @@ export default function ArticlesCategoriesPage() {
         <UpdateCategoryDialog
           category={editingCategory}
           open={true}
+          canEdit={canEdit(role)}
           onOpenChange={(open) => {
             if (!open) setEditingCategory(null);
           }}
@@ -73,7 +84,7 @@ export default function ArticlesCategoriesPage() {
         <DeleteCategoryDialog
           category={deletingCategory}
           open={true}
-          canDelete={true}
+          canDelete={canDelete(role)}
           onOpenChange={(open) => {
             if (!open) setDeletingCategory(null);
           }}

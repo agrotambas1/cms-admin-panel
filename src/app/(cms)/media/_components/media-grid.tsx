@@ -22,7 +22,7 @@ export function MediaGrid({
 }: MediaGridProps) {
   if (loading) {
     return (
-      <div className="flex-1 overflow-y-auto bg-muted/10 flex items-center justify-center">
+      <div className="flex-1 overflow-y-auto flex items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>
       </div>
     );
@@ -30,14 +30,14 @@ export function MediaGrid({
 
   if (mediaList.length === 0) {
     return (
-      <div className="flex-1 overflow-y-auto bg-muted/10 flex items-center justify-center">
+      <div className="flex-1 overflow-y-auto flex items-center justify-center">
         <p className="text-muted-foreground">No media found</p>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-muted/10">
+    <div className="flex-1 overflow-y-auto ">
       <div className="grid gap-2 grid-cols-[repeat(auto-fill,minmax(150px,1fr))]">
         {mediaList.map((item) => {
           const isSelected = bulkMode

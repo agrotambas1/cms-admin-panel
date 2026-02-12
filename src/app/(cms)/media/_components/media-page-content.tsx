@@ -8,17 +8,27 @@ import { MediaLibraryTab } from "./media-library-tab";
 import { useMedia } from "@/hooks/media/use-media";
 import { Button } from "@/components/ui/button";
 import { SearchFilter } from "@/components/common/filters/search-filter";
+import { canCreate, canDelete } from "@/lib/permission";
+import { useCurrentUser } from "@/hooks/auth/use-current-user";
+import { MediaTypeFilter } from "@/components/common/filters/media-type-filter";
 
 interface MediaPageContentProps {
   onSelectImageExternal?: (media: MediaFile) => void;
+  defaultType?: string;
+  hideTypeFilter?: boolean;
 }
 
 export function MediaPageContent({
   onSelectImageExternal,
+  defaultType = "all",
+  hideTypeFilter = false,
 }: MediaPageContentProps) {
+  const { role, loading: authLoading } = useCurrentUser();
+
   const [selectedImage, setSelectedImage] = useState<MediaFile | null>(null);
   const [bulkMode, setBulkMode] = useState(false);
   const [search, setSearch] = useState("");
+  const [type, setType] = useState(defaultType);
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(40);
@@ -27,6 +37,7 @@ export function MediaPageContent({
     search,
     page,
     limit,
+    type,
   });
 
   const handleUpdateDetail = (field: keyof MediaFile, value: string) => {
@@ -41,11 +52,15 @@ export function MediaPageContent({
     setSelectedImage(null);
   };
 
+  if (authLoading) return null;
+
   return (
     <div className="w-full space-y-4">
       <Tabs defaultValue="library" className="flex flex-col space-y-2">
         <TabsList>
-          <TabsTrigger value="upload">Upload File</TabsTrigger>
+          {canCreate(role) && (
+            <TabsTrigger value="upload">Upload File</TabsTrigger>
+          )}
           <TabsTrigger value="library">Library</TabsTrigger>
         </TabsList>
 
@@ -64,39 +79,54 @@ export function MediaPageContent({
                 setSelectedImage(null);
               }}
             />
-            <Button
-              variant={bulkMode ? "secondary" : "outline"}
-              onClick={() => {
-                setBulkMode((prev) => !prev);
-                setSelectedImage(null);
-              }}
-            >
-              {bulkMode ? "Exit Bulk Mode" : "Bulk Select"}
-            </Button>
+            {!hideTypeFilter && (
+              <MediaTypeFilter
+                value={type}
+                onChange={(value) => {
+                  setType(value);
+                  setPage(1);
+                  setBulkMode(false);
+                  setSelectedImage(null);
+                }}
+              />
+            )}
+            {canDelete(role) && (
+              <Button
+                variant={bulkMode ? "secondary" : "outline"}
+                onClick={() => {
+                  setBulkMode((prev) => !prev);
+                  setSelectedImage(null);
+                }}
+              >
+                {bulkMode ? "Exit Bulk Mode" : "Bulk Select"}
+              </Button>
+            )}
           </div>
 
-          <MediaLibraryTab
-            mediaList={mediaList}
-            selectedImage={selectedImage}
-            onSelectImage={(media) => {
-              setSelectedImage(media);
-            }}
-            onUpdateDetail={handleUpdateDetail}
-            onDeleteSuccess={handleDeleteSuccess}
-            loading={loading}
-            pagination={{
-              page,
-              limit,
-              total: pagination.total,
-            }}
-            onPageChange={setPage}
-            onLimitChange={setLimit}
-            bulkMode={bulkMode}
-            onExitBulkMode={() => setBulkMode(false)}
-          />
+          <div className="mb-16">
+            <MediaLibraryTab
+              mediaList={mediaList}
+              selectedImage={selectedImage}
+              onSelectImage={(media) => {
+                setSelectedImage(media);
+              }}
+              onUpdateDetail={handleUpdateDetail}
+              onDeleteSuccess={handleDeleteSuccess}
+              loading={loading}
+              pagination={{
+                page,
+                limit,
+                total: pagination.total,
+              }}
+              onPageChange={setPage}
+              onLimitChange={setLimit}
+              bulkMode={bulkMode}
+              onExitBulkMode={() => setBulkMode(false)}
+            />
+          </div>
 
           {onSelectImageExternal && (
-            <div className="border-t mt-2 p-3 flex justify-end gap-2">
+            <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 flex justify-end gap-2 shadow-lg z-50">
               <Button variant="outline" onClick={() => setSelectedImage(null)}>
                 Cancel
               </Button>

@@ -10,6 +10,8 @@ import { SearchFilter } from "@/components/common/filters/search-filter";
 import { CreateUserDialog } from "./_components/create-user-dialog";
 import { UpdateUserDialog } from "./_components/edit-user-dialog";
 import { DeleteUserDialog } from "./_components/delete-user-dialog";
+import { isAdmin } from "@/lib/permission";
+import { useCurrentUser } from "@/hooks/auth/use-current-user";
 
 const ROLE_OPTIONS = [
   { label: "All Roles", value: "" },
@@ -20,6 +22,8 @@ const ROLE_OPTIONS = [
 ];
 
 export default function UserManagementPage() {
+  const { role, loading: authLoading } = useCurrentUser();
+
   const [searchValue, setSearchValue] = useState("");
   const [selectedRole, setSelectedRole] = useState("");
   const [page, setPage] = useState(1);
@@ -39,7 +43,10 @@ export default function UserManagementPage() {
   const columns = getUserColumns({
     onEdit: (user) => setEditingUser(user),
     onDelete: (user) => setDeletingUser(user),
+    isAdmin: isAdmin(role),
   });
+
+  if (authLoading) return null;
 
   return (
     <div className="w-full space-y-4">

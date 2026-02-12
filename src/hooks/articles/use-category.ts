@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import { Category, CategoryFilters } from "../../types/article/category";
 import { PaginationState } from "@/components/common/table/data-table";
@@ -19,9 +19,17 @@ import { AxiosError } from "axios";
 interface useCategoriesParams extends CategoryFilters {
   page: number;
   limit: number;
+  sortBy?: string;
+  order?: "asc" | "desc";
 }
 
-export function useCategories({ search, page, limit }: useCategoriesParams) {
+export function useCategories({
+  search,
+  page,
+  limit,
+  sortBy = "createdAt",
+  order = "desc",
+}: useCategoriesParams) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,53 +39,40 @@ export function useCategories({ search, page, limit }: useCategoriesParams) {
     total: 0,
   });
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      const { data } = await cmsApi.get("/article-categories", {
+        params: {
+          search,
+          page,
+          limit,
+          sortBy,
+          order,
+        },
+      });
+
+      setCategories(data.data || data.categories || data);
+      setPagination({
+        page: data.meta.page,
+        limit: data.meta.limit,
+        total: data.meta.total,
+      });
+      setError(null);
+    } catch (error) {
+      console.error(error);
+      setError("Failed to fetch categories");
+    } finally {
+      setLoading(false);
+    }
+  }, [search, page, limit, sortBy, order]);
+
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        setLoading(true);
-
-        const { data } = await cmsApi.get("/article-categories", {
-          params: {
-            search,
-            page,
-            limit,
-          },
-        });
-
-        setCategories(data.data || data.categories || data);
-        setPagination({
-          page: data.meta.page,
-          limit: data.meta.limit,
-          total: data.meta.total,
-        });
-        setError(null);
-      } catch (error) {
-        console.error(error);
-        setError("Failed to fetch categories");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchCategories();
-  }, [search, page, limit]);
+  }, [fetchCategories]);
 
-  const refetch = async () => {
-    const { data } = await cmsApi.get("/article-categories", {
-      params: {
-        search,
-        page,
-        limit,
-      },
-    });
-
-    setCategories(data.data || data.categories || data);
-    setPagination({
-      page: data.meta?.page ?? page,
-      limit: data.meta?.limit ?? limit,
-      total: data.meta?.total ?? 0,
-    });
-  };
+  const refetch = () => fetchCategories();
 
   return {
     categories,
@@ -173,12 +168,14 @@ export function useCreateCategory(onSuccess?: () => void) {
 interface UseUpdateCategoryParams {
   category: Category;
   open: boolean;
+  canEdit: boolean;
   onSuccess?: () => void;
 }
 
 export function useUpdateCategory({
   category,
   open,
+  canEdit,
   onSuccess,
 }: UseUpdateCategoryParams) {
   const [loading, setLoading] = useState(false);
@@ -221,6 +218,11 @@ export function useUpdateCategory({
   };
 
   const updateCategory = async (data: UpdateCategoryForm) => {
+    if (!canEdit) {
+      toast.error("You are not allowed to update this category");
+      return { success: false };
+    }
+
     setLoading(true);
     try {
       await cmsApi.put(`/article-categories/${category.id}`, {

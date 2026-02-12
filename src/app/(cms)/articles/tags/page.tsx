@@ -9,8 +9,12 @@ import { DataTable } from "@/components/common/table/data-table";
 import { CreateTagDialog } from "./_components/create-tag-dialog";
 import { UpdateTagDialog } from "./_components/edit-tag-dialog";
 import { DeleteTagDialog } from "./_components/delete-tag-dialog";
+import { useCurrentUser } from "@/hooks/auth/use-current-user";
+import { canCreate, canDelete, canEdit } from "@/lib/permission";
 
 export default function ArticleTagsPage() {
+  const { role, loading: authLoading } = useCurrentUser();
+
   const [searchValue, setSearchValue] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -27,7 +31,11 @@ export default function ArticleTagsPage() {
   const columns = getTagColumns({
     onEdit: (tag) => setEditingTag(tag),
     onDelete: (tag) => setDeletingTag(tag),
+    canDelete: canDelete(role),
+    canEdit: canEdit(role),
   });
+
+  if (authLoading) return null;
 
   return (
     <div className="w-full space-y-4">
@@ -39,7 +47,7 @@ export default function ArticleTagsPage() {
           searchPlaceholder="Search tags..."
         />
 
-        <CreateTagDialog onTagCreated={refetch} />
+        {canCreate(role) && <CreateTagDialog onTagCreated={refetch} />}
       </div>
 
       <DataTable
@@ -57,6 +65,7 @@ export default function ArticleTagsPage() {
         <UpdateTagDialog
           tag={editingTag}
           open={true}
+          canEdit={canEdit(role)}
           onOpenChange={(open) => {
             if (!open) setEditingTag(null);
           }}
@@ -71,7 +80,7 @@ export default function ArticleTagsPage() {
         <DeleteTagDialog
           tag={deletingTag}
           open={true}
-          canDelete={true}
+          canDelete={canDelete(role)}
           onOpenChange={(open) => {
             if (!open) setDeletingTag(null);
           }}

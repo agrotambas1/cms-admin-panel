@@ -9,8 +9,12 @@ import { useIndustries } from "@/hooks/industry/use-industry";
 import { CreateIndustryDialog } from "./_components/create-industry-dialog";
 import { UpdateIndustryDialog } from "./_components/edit-industry-dialog";
 import { DeleteIndustryDialog } from "./_components/delete-industry-dialog";
+import { canCreate, canDelete, canEdit } from "@/lib/permission";
+import { useCurrentUser } from "@/hooks/auth/use-current-user";
 
 export default function IndustryPage() {
+  const { role, loading: authLoading } = useCurrentUser();
+
   const [searchValue, setSearchValue] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -29,7 +33,11 @@ export default function IndustryPage() {
   const columns = getIndustryColumns({
     onEdit: (industry) => setEditingIndustry(industry),
     onDelete: (industry) => setDeletingIndustry(industry),
+    canDelete: canDelete(role),
+    canEdit: canEdit(role),
   });
+
+  if (authLoading) return null;
 
   return (
     <div className="w-full space-y-4">
@@ -41,7 +49,9 @@ export default function IndustryPage() {
           searchPlaceholder="Search industries..."
         />
 
-        <CreateIndustryDialog onIndustryCreated={refetch} />
+        {canCreate(role) && (
+          <CreateIndustryDialog onIndustryCreated={refetch} />
+        )}
       </div>
 
       <DataTable
@@ -59,6 +69,7 @@ export default function IndustryPage() {
         <UpdateIndustryDialog
           industry={editingIndustry}
           open={true}
+          canEdit={canEdit(role)}
           onOpenChange={(open) => {
             if (!open) setEditingIndustry(null);
           }}
@@ -73,7 +84,7 @@ export default function IndustryPage() {
         <DeleteIndustryDialog
           industry={deletingIndustry}
           open={true}
-          canDelete={true}
+          canDelete={canDelete(role)}
           onOpenChange={(open) => {
             if (!open) setDeletingIndustry(null);
           }}

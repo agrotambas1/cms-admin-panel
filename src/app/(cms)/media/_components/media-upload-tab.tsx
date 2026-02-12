@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useUploadMedia } from "@/hooks/media/use-media";
 
 const ALLOWED_MIME_TYPES = [
@@ -23,6 +23,8 @@ interface MediaUploadTabProps {
 export function MediaUploadTab({ onUploadSuccess }: MediaUploadTabProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploading, uploadFiles } = useUploadMedia(onUploadSuccess);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounterRef = useRef(0);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -37,6 +39,8 @@ export function MediaUploadTab({ onUploadSuccess }: MediaUploadTabProps) {
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
+    dragCounterRef.current = 0;
+    setIsDragging(false);
 
     const files = Array.from(e.dataTransfer.files).filter((file) =>
       ALLOWED_MIME_TYPES.includes(file.type),
@@ -47,16 +51,53 @@ export function MediaUploadTab({ onUploadSuccess }: MediaUploadTabProps) {
     }
   };
 
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current += 1;
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current === 0) {
+      setIsDragging(false);
+    }
+  };
+
   return (
     <div className="flex-1">
       <div
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
-        className="border-2 p-6 h-[500px] border-dashed rounded-xl flex flex-col items-center justify-center space-y-4"
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        className={`
+          border-2 p-6 h-[500px] border-dashed rounded-xl
+          flex flex-col items-center justify-center space-y-4
+          transition-all duration-200
+          ${
+            isDragging
+              ? "border-foreground bg-foreground/10 scale-[1.01]"
+              : "border-muted-foreground/30"
+          }
+        `}
       >
-        <Upload className="w-12 h-12 text-muted-foreground" />
-        <p className="text-lg font-medium">
-          {uploading ? "Uploading..." : "Drag and drop or click to upload"}
+        <Upload
+          className={`w-12 h-12 transition-all duration-200 ${
+            isDragging ? "text-white scale-110" : "text-muted-foreground"
+          }`}
+        />
+        <p
+          className={`text-lg font-medium transition-colors duration-200 ${
+            isDragging ? "text-white" : ""
+          }`}
+        >
+          {uploading
+            ? "Uploading..."
+            : isDragging
+              ? "Release to upload"
+              : "Drag and drop or click to upload"}
         </p>
         <input
           ref={fileInputRef}
@@ -68,7 +109,9 @@ export function MediaUploadTab({ onUploadSuccess }: MediaUploadTabProps) {
         />
         <Button
           onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
+          disabled={uploading || isDragging}
+          variant={isDragging ? "outline" : "outline"}
+          className="transition-all duration-200"
         >
           {uploading ? "Uploading..." : "Choose a file"}
         </Button>

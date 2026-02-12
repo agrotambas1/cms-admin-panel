@@ -13,6 +13,7 @@ import { IndustryForm } from "./industry-form";
 interface UpdateIndustryDialogProps {
   industry: Industry;
   open: boolean;
+  canEdit: boolean;
   onOpenChange: (open: boolean) => void;
   onIndustryUpdated: () => void;
 }
@@ -20,6 +21,7 @@ interface UpdateIndustryDialogProps {
 export function UpdateIndustryDialog({
   industry,
   open,
+  canEdit,
   onOpenChange,
   onIndustryUpdated,
 }: UpdateIndustryDialogProps) {
@@ -34,6 +36,7 @@ export function UpdateIndustryDialog({
   } = useUpdateIndustry({
     industry,
     open,
+    canEdit,
     onSuccess: () => {
       onOpenChange(false);
       onIndustryUpdated();

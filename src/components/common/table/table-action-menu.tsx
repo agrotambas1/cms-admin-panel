@@ -20,16 +20,20 @@ export type TableAction<T> =
   | {
       label: string;
       href: string;
+      icon?: React.ReactNode;
       render?: (item: T) => React.ReactNode;
       variant?: "default" | "destructive";
       separator?: boolean;
+      disabled?: boolean;
     }
   | {
       label: string;
       onClick: (item: T) => void;
+      icon?: React.ReactNode;
       render?: (item: T) => React.ReactNode;
       variant?: "default" | "destructive";
       separator?: boolean;
+      disabled?: boolean;
     };
 
 interface TableActionsMenuProps<T> {
@@ -49,22 +53,17 @@ export function TableActionsMenu<T>({
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      {/* <DropdownMenuContent align="end">
-        {actions.map((action, index) => (
-          <div key={index}>            
-            <DropdownMenuItem
-              onClick={() => action.onClick(item)}
-              className={action.variant === "destructive" ? "text-red-600" : ""}
-            >
-              {action.label}
-            </DropdownMenuItem>
-          </div>
-        ))}
-      </DropdownMenuContent> */}
 
       <DropdownMenuContent align="end">
         {actions.map((action, index) => {
-          const content = action.render ? action.render(item) : action.label;
+          const content = action.render ? (
+            action.render(item)
+          ) : (
+            <span className="flex items-center gap-4">
+              {action.icon}
+              {action.label}
+            </span>
+          );
 
           if ("href" in action) {
             return (
@@ -79,6 +78,7 @@ export function TableActionsMenu<T>({
               key={index}
               onClick={() => action.onClick(item)}
               className={action.variant === "destructive" ? "text-red-600" : ""}
+              disabled={action.disabled}
             >
               {content}
             </DropdownMenuItem>

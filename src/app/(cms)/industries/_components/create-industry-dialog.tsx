@@ -11,6 +11,7 @@ import { useCreateIndustry } from "@/hooks/industry/use-industry";
 import { CreateIndustryForm } from "@/validations/industry/industry-validation";
 import { useState } from "react";
 import { IndustryForm } from "./industry-form";
+import { Plus } from "lucide-react";
 
 interface CreateIndustryDialogProps {
   onIndustryCreated: () => void;
@@ -50,7 +51,10 @@ export function CreateIndustryDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button>Create Industry</Button>
+        <Button>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Industry
+        </Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-[525px]">

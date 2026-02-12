@@ -2,6 +2,7 @@
 
 import { PaginationState } from "@/components/common/table/data-table";
 import { cmsApi } from "@/lib/api";
+import { generateSlug } from "@/lib/utils";
 import { Industry, IndustryFilters } from "@/types/industry/industry";
 import {
   CreateIndustryForm,
@@ -11,16 +12,24 @@ import {
 } from "@/validations/industry/industry-validation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AxiosError } from "axios";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 interface useIndustriesParams extends IndustryFilters {
   page: number;
   limit: number;
+  sortBy?: string;
+  order?: "asc" | "desc";
 }
 
-export function useIndustries({ search, page, limit }: useIndustriesParams) {
+export function useIndustries({
+  search,
+  page,
+  limit,
+  sortBy = "createdAt",
+  order = "desc",
+}: useIndustriesParams) {
   const [industries, setIndustries] = useState<Industry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,66 +39,43 @@ export function useIndustries({ search, page, limit }: useIndustriesParams) {
     total: 0,
   });
 
+  const fetchIndustries = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      const { data } = await cmsApi.get("/industries", {
+        params: {
+          search,
+          page,
+          limit,
+          sortBy,
+          order,
+        },
+      });
+
+      setIndustries(data.data || data.industries || data);
+      setPagination({
+        page: data.meta.page,
+        limit: data.meta.limit,
+        total: data.meta.total,
+      });
+      setError(null);
+    } catch (error) {
+      console.error(error);
+      setError("Failed to fetch industries");
+    } finally {
+      setLoading(false);
+    }
+  }, [search, page, limit, sortBy, order]);
+
   useEffect(() => {
-    const fetchIndustries = async () => {
-      try {
-        setLoading(true);
-
-        const { data } = await cmsApi.get("/industries", {
-          params: {
-            search,
-            page,
-            limit,
-          },
-        });
-
-        setIndustries(data.data || data.industries || data);
-        setPagination({
-          page: data.meta.page,
-          limit: data.meta.limit,
-          total: data.meta.total,
-        });
-        setError(null);
-      } catch (error) {
-        console.error(error);
-        setError("Failed to fetch industries");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchIndustries();
-  }, [search, page, limit]);
+  }, [fetchIndustries]);
 
-  const refetch = async () => {
-    const { data } = await cmsApi.get("/industries", {
-      params: {
-        search,
-        page,
-        limit,
-      },
-    });
-
-    setIndustries(data.data || data.industries || data);
-    setPagination({
-      page: data.meta?.page ?? page,
-      limit: data.meta?.limit ?? limit,
-      total: data.meta?.total ?? 0,
-    });
-  };
+  const refetch = () => fetchIndustries();
 
   return { industries, loading, error, pagination, refetch };
 }
-
-const generateSlug = (text: string): string => {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-+|-+$/g, "");
-};
 
 export function useCreateIndustry(onSuccess?: () => void) {
   const [loading, setLoading] = useState(false);
@@ -166,12 +152,14 @@ export function useCreateIndustry(onSuccess?: () => void) {
 interface UseUpdateIndustryParams {
   industry: Industry;
   open: boolean;
+  canEdit: boolean;
   onSuccess?: () => void;
 }
 
 export function useUpdateIndustry({
   industry,
   open,
+  canEdit,
   onSuccess,
 }: UseUpdateIndustryParams) {
   const [loading, setLoading] = useState(false);
@@ -213,6 +201,11 @@ export function useUpdateIndustry({
   };
 
   const updateIndustry = async (data: UpdateIndustryForm) => {
+    if (!canEdit) {
+      toast.error("You are not allowed to update this industry");
+      return { success: false };
+    }
+
     setLoading(true);
     try {
       await cmsApi.put(`/industries/${industry.id}`, {

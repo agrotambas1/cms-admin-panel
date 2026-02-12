@@ -12,9 +12,13 @@ import { DeleteArticleDialog } from "../../_components/delete-article-dialog";
 import { getMediaUrl } from "@/lib/media-utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { PublicationDownload } from "../../_components/publication-download";
+import { PublicationDownload } from "@/components/common/download/publication-download";
+import { useCurrentUser } from "@/hooks/auth/use-current-user";
+import { canDelete, canEdit } from "@/lib/permission";
 
 export default function ArticleViewPage() {
+  const { role, loading: authLoading } = useCurrentUser();
+
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -22,7 +26,7 @@ export default function ArticleViewPage() {
   const { article, loading, error } = useArticle(id);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="w-full space-y-4">
         <div className="flex items-center gap-4">
@@ -51,12 +55,6 @@ export default function ArticleViewPage() {
     );
   }
 
-  const statusColors = {
-    draft: "bg-gray-500",
-    published: "bg-green-500",
-    scheduled: "bg-blue-500",
-  };
-
   return (
     <div className="w-[1400px] mx-auto space-y-4">
       <div className="flex items-center justify-between">
@@ -68,19 +66,23 @@ export default function ArticleViewPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" asChild>
-            <Link href={`/articles/${article.id}/edit`}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Link>
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => setDeleteDialogOpen(true)}
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete
-          </Button>
+          {canEdit(role) && (
+            <Button variant="outline" asChild>
+              <Link href={`/articles/${article.id}/edit`}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Link>
+            </Button>
+          )}
+          {canDelete(role) && (
+            <Button
+              variant="destructive"
+              onClick={() => setDeleteDialogOpen(true)}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
+          )}
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
@@ -125,7 +127,7 @@ export default function ArticleViewPage() {
                   <div className="w-full rounded-lg border overflow-hidden">
                     <img
                       src={getMediaUrl(article.thumbnailMedia.url)}
-                      alt={article.title}
+                      alt={article.thumbnailMedia.altText || article.title}
                       className="w-full object-cover"
                     />
                   </div>
@@ -139,7 +141,7 @@ export default function ArticleViewPage() {
               {article.content && (
                 <div className="space-y-2">
                   <div
-                    className="prose prose-lg max-w-none article-content"
+                    className="prose prose-lg max-w-none insight-content"
                     dangerouslySetInnerHTML={{ __html: article.content }}
                   />
                 </div>
@@ -179,13 +181,15 @@ export default function ArticleViewPage() {
                     <div className="space-y-2">
                       <p className="text-sm font-medium">SEO Keywords</p>
                       <div className="flex flex-wrap gap-2">
-                        {article.seoKeywords.map((keyword, index) => (
-                          <Badge key={index} variant="secondary">
-                            {typeof keyword === "string"
-                              ? keyword
-                              : keyword.keyword}
-                          </Badge>
-                        ))}
+                        {article.seoKeywords.map(
+                          (keyword: string | { keyword: string }, index) => (
+                            <Badge key={index} variant="secondary">
+                              {typeof keyword === "string"
+                                ? keyword
+                                : keyword.keyword}
+                            </Badge>
+                          ),
+                        )}
                       </div>
                     </div>
                   )}
@@ -291,7 +295,7 @@ export default function ArticleViewPage() {
         <DeleteArticleDialog
           article={article}
           open={deleteDialogOpen}
-          canDelete={true}
+          canDelete={canDelete(role)}
           onOpenChange={setDeleteDialogOpen}
           onDeleted={() => {
             router.push("/articles");

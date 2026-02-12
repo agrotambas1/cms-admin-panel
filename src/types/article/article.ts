@@ -6,8 +6,9 @@ export interface Article {
   content: string;
   thumbnailId: string | null;
   publicationId: string | null;
-  metaTitle: string | null;
-  metaDescription: string | null;
+  metaTitle: string;
+  metaDescription: string;
+  seoKeywords: string[] | null;
   status: string;
   publishedAt: string | null;
   scheduledAt: string | null;
@@ -19,11 +20,15 @@ export interface Article {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  serviceId: string;
+  industryId: string;
 
   thumbnailMedia?: {
     id: string;
     url: string;
     fileName: string;
+    altText?: string | null;
+    caption?: string | null;
   };
 
   publication?: {
@@ -49,11 +54,19 @@ export interface Article {
     name: string;
   }>;
 
-  seoKeywords?: Array<{
+  service?: {
     id: string;
-    keyword: string;
-    order: number;
-  }>;
+    name: string;
+    slug: string;
+    description?: string | null;
+  };
+
+  industry?: {
+    id: string;
+    name: string;
+    slug: string;
+    description?: string | null;
+  };
 }
 
 export interface ArticleFilters {
@@ -61,6 +74,8 @@ export interface ArticleFilters {
   status?: string;
   categoryId?: string;
   isFeatured?: boolean;
+  serviceId?: string;
+  industryId?: string;
 }
 
 export interface ArticlesResponse {

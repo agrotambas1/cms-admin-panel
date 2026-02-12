@@ -13,6 +13,7 @@ import { CategoryForm } from "./category-form";
 interface UpdateCategoryDialogProps {
   category: Category;
   open: boolean;
+  canEdit: boolean;
   onOpenChange: (open: boolean) => void;
   onCategoryUpdated: () => void;
 }
@@ -20,6 +21,7 @@ interface UpdateCategoryDialogProps {
 export function UpdateCategoryDialog({
   category,
   open,
+  canEdit,
   onOpenChange,
   onCategoryUpdated,
 }: UpdateCategoryDialogProps) {
@@ -34,6 +36,7 @@ export function UpdateCategoryDialog({
   } = useUpdateCategory({
     category,
     open,
+    canEdit,
     onSuccess: () => {
       onOpenChange(false);
       onCategoryUpdated();

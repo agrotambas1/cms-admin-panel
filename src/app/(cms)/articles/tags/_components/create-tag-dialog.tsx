@@ -21,6 +21,7 @@ import { useCreateTag } from "@/hooks/articles/use-tag";
 import { CreateTagForm } from "@/validations/article/tag-validation";
 import { useState } from "react";
 import { TagForm } from "./tag-form";
+import { Plus } from "lucide-react";
 
 interface CreateTagDialogProps {
   onTagCreated: () => void;
@@ -58,7 +59,10 @@ export function CreateTagDialog({ onTagCreated }: CreateTagDialogProps) {
       }}
     >
       <DialogTrigger asChild>
-        <Button>New Tag</Button>
+        <Button>
+          <Plus className="h-4 w-4 mr-2" />
+          New Tag
+        </Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-[525px]">

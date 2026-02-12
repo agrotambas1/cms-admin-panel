@@ -21,8 +21,12 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { DeleteArticleDialog } from "./_components/delete-article-dialog";
 import { BulkDeleteArticlesDialog } from "./_components/bulk-delete-article-dialog";
+import { useCurrentUser } from "@/hooks/auth/use-current-user";
+import { canBulkDelete, canCreate, canDelete, canEdit } from "@/lib/permission";
 
 export default function ArticlesPage() {
+  const { role, loading: authLoading } = useCurrentUser();
+
   const [searchValue, setSearchValue] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -57,6 +61,8 @@ export default function ArticlesPage() {
 
   const columns = getArticleColumns({
     onDelete: (article) => setDeletingArticle(article),
+    canDelete: canDelete(role),
+    canEdit: canEdit(role),
   });
 
   return (
@@ -136,12 +142,14 @@ export default function ArticlesPage() {
           </Select>
         </div>
 
-        <Button asChild>
-          <Link href="/articles/create">
-            <Plus className="h-4 w-4 mr-2" />
-            New Article
-          </Link>
-        </Button>
+        {canCreate(role) && (
+          <Button asChild>
+            <Link href="/articles/create">
+              <Plus className="h-4 w-4 mr-2" />
+              New Article
+            </Link>
+          </Button>
+        )}
       </div>
 
       <DataTable
@@ -153,17 +161,17 @@ export default function ArticlesPage() {
         onPageChange={setPage}
         onLimitChange={setLimit}
         getRowKey={(article) => article.id}
-        enableRowSelection={true}
+        enableRowSelection={canBulkDelete(role)}
         selectedRows={selectedRows}
         onSelectionChange={setSelectedRows}
-        onDeleteSelected={handleBulkDelete}
+        onDeleteSelected={canBulkDelete(role) ? handleBulkDelete : undefined}
       />
 
       {deletingArticle && (
         <DeleteArticleDialog
           article={deletingArticle}
           open={true}
-          canDelete={true}
+          canDelete={canDelete(role)}
           onOpenChange={(open) => {
             if (!open) setDeletingArticle(null);
           }}

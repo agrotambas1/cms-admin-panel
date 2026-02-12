@@ -4,16 +4,23 @@ import {
   TableActionsMenu,
 } from "@/components/common/table/table-action-menu";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Article } from "@/types/article/article";
 import { format } from "date-fns";
+import { Eye, Pencil, Trash2 } from "lucide-react";
+import Link from "next/link";
 
 interface ArticleColumnsProps {
   onDelete: (article: Article) => void;
   onBulkDelete?: (articleIds: Set<string | number>) => void;
+  canDelete: boolean;
+  canEdit: boolean;
 }
 
 export function getArticleColumns({
   onDelete,
+  canDelete,
+  canEdit,
 }: ArticleColumnsProps): ColumnDef<Article>[] {
   return [
     {
@@ -30,6 +37,19 @@ export function getArticleColumns({
       header: "Category",
       cell: (article) => (
         <span className="text-sm">{article.category?.name || "-"}</span>
+      ),
+    },
+    {
+      header: "Tag",
+      accessorKey: "tags",
+      cell: (article) => (
+        <div className="flex flex-wrap gap-1">
+          {article.tags?.map((tag) => (
+            <Badge key={tag.id} variant="secondary">
+              {tag.name}
+            </Badge>
+          )) ?? <span className="text-muted-foreground">-</span>}
+        </div>
       ),
     },
     {
@@ -91,38 +111,42 @@ export function getArticleColumns({
     },
     {
       header: "",
-      cell: (article) => {
-        const actions: TableAction<Article>[] = [
-          // ...(onView
-          //   ? [
-          //       {
-          //         label: "View",
-          //         onClick: onView,
-          //       },
-          //     ]
-          //   : []),
-          // {
-          //   label: "Edit",
-          //   onClick: onEdit,
-          // },
-          {
-            label: "View",
-            href: `/articles/view/${article.id}`,
-          },
-          {
-            label: "Edit",
-            href: `/articles/${article.id}/edit`,
-          },
-          {
-            label: "Delete",
-            onClick: onDelete,
-            variant: "destructive" as const,
-            separator: true,
-          },
-        ];
-
-        return <TableActionsMenu item={article} actions={actions} />;
-      },
+      cell: (article) => (
+        <div className="flex items-center justify-end gap-2">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href={`/articles/view/${article.id}`}>
+              <Eye className="h-4 w-4" />
+            </Link>
+          </Button>
+          {(canEdit || canDelete) && (
+            <TableActionsMenu
+              item={article}
+              actions={[
+                ...(canEdit
+                  ? [
+                      {
+                        label: "Edit",
+                        href: `/articles/${article.id}/edit`,
+                        icon: <Pencil className="h-4 w-4" />,
+                      },
+                    ]
+                  : []),
+                ...(canDelete
+                  ? [
+                      {
+                        label: "Delete",
+                        onClick: onDelete,
+                        variant: "destructive" as const,
+                        icon: <Trash2 className="h-4 w-4 bg text-red-600" />,
+                        separator: true,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          )}
+        </div>
+      ),
       className: "w-[50px]",
     },
   ];

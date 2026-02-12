@@ -5,10 +5,13 @@ import {
   TableActionsMenu,
 } from "@/components/common/table/table-action-menu";
 import { Badge } from "@/components/ui/badge";
+import { Pencil, Trash2 } from "lucide-react";
 
 interface UserColumnsProps {
   onEdit: (user: User) => void;
   onDelete: (user: User) => void;
+  isAdmin: boolean;
+  currentUserId?: string;
 }
 
 function formatRole(role: string) {
@@ -22,6 +25,8 @@ function formatRole(role: string) {
 export function getUserColumns({
   onEdit,
   onDelete,
+  isAdmin,
+  currentUserId,
 }: UserColumnsProps): ColumnDef<User>[] {
   return [
     {
@@ -65,21 +70,38 @@ export function getUserColumns({
     {
       header: "",
       cell: (user) => {
+        const isSelf = user.id === currentUserId;
+        const isUserAdmin = user.role === "ADMIN";
+        const canDelete = !isSelf && !isUserAdmin;
+
         const actions: TableAction<User>[] = [
-          {
-            label: "Edit",
-            onClick: onEdit,
-          },
+          ...(isAdmin
+            ? [
+                {
+                  label: "Edit",
+                  onClick: onEdit,
+                  icon: <Pencil className="h-4 w-4" />,
+                },
+                {
+                  label: "Delete",
+                  onClick: onDelete,
+                  variant: "destructive" as const,
+                  icon: <Trash2 className="h-4 w-4 text-red-600" />,
+                  separator: true,
+                  disabled: !canDelete,
+                },
+              ]
+            : []),
         ];
 
-        if (user.role !== "ADMIN") {
-          actions.push({
-            label: "Delete",
-            onClick: onDelete,
-            variant: "destructive",
-            separator: true,
-          });
-        }
+        // if (user.role !== "ADMIN") {
+        //   actions.push({
+        //     label: "Delete",
+        //     onClick: onDelete,
+        //     variant: "destructive",
+        //     separator: true,
+        //   });
+        // }
 
         return <TableActionsMenu item={user} actions={actions} />;
       },

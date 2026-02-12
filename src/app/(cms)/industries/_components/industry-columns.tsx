@@ -5,17 +5,22 @@ import {
   TableActionsMenu,
 } from "@/components/common/table/table-action-menu";
 import { Badge } from "@/components/ui/badge";
+import { Pencil, Trash2 } from "lucide-react";
 
 interface IndustryColumnsProps {
   onEdit: (industry: Industry) => void;
   onDelete: (industry: Industry) => void;
+  canDelete: boolean;
+  canEdit: boolean;
 }
 
 export function getIndustryColumns({
   onEdit,
   onDelete,
+  canDelete,
+  canEdit,
 }: IndustryColumnsProps): ColumnDef<Industry>[] {
-  return [
+  const columns: ColumnDef<Industry>[] = [
     {
       header: "Name",
       accessorKey: "name",
@@ -47,25 +52,40 @@ export function getIndustryColumns({
         </Badge>
       ),
     },
-    {
+  ];
+
+  if (canEdit || canDelete) {
+    columns.push({
       header: "",
       cell: (user) => {
         const actions: TableAction<Industry>[] = [
-          {
-            label: "Edit",
-            onClick: onEdit,
-          },
-          {
-            label: "Delete",
-            onClick: onDelete,
-            variant: "destructive",
-            separator: true,
-          },
+          ...(canEdit
+            ? [
+                {
+                  label: "Edit",
+                  onClick: onEdit,
+                  icon: <Pencil className="h-4 w-4" />,
+                },
+              ]
+            : []),
+          ...(canDelete
+            ? [
+                {
+                  label: "Delete",
+                  onClick: onDelete,
+                  variant: "destructive" as const,
+                  icon: <Trash2 className="h-4 w-4 bg text-red-600" />,
+                  separator: true,
+                },
+              ]
+            : []),
         ];
 
         return <TableActionsMenu item={user} actions={actions} />;
       },
       className: "w-[50px]",
-    },
-  ];
+    });
+  }
+
+  return columns;
 }

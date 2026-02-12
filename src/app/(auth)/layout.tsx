@@ -1,3 +1,5 @@
+"use client";
+
 import { ModeToggle } from "@/components/common/mode-toggle";
 import { ReactNode } from "react";
 

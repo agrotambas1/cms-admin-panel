@@ -42,8 +42,8 @@ export const menuItems: MenuItem[] = [
     allowedRoles: ["ADMIN", "MARKETING_EDITOR", "TECHNICAL_EDITOR", "VIEWER"],
   },
   {
-    title: "Solution",
-    url: "/solutions",
+    title: "Services",
+    url: "/services",
     icon: FolderCheck,
     allowedRoles: ["ADMIN", "MARKETING_EDITOR", "TECHNICAL_EDITOR", "VIEWER"],
   },
@@ -51,12 +51,6 @@ export const menuItems: MenuItem[] = [
     title: "Industries",
     url: "/industries",
     icon: Building2,
-    allowedRoles: ["ADMIN", "MARKETING_EDITOR", "TECHNICAL_EDITOR", "VIEWER"],
-  },
-  {
-    title: "Capabilities",
-    url: "/capabilities",
-    icon: Boxes,
     allowedRoles: ["ADMIN", "MARKETING_EDITOR", "TECHNICAL_EDITOR", "VIEWER"],
   },
   {
@@ -78,12 +72,22 @@ export const menuItems: MenuItem[] = [
       {
         title: "Categories",
         url: "/articles/categories",
-        allowedRoles: ["ADMIN"],
+        allowedRoles: [
+          "ADMIN",
+          "MARKETING_EDITOR",
+          "TECHNICAL_EDITOR",
+          "VIEWER",
+        ],
       },
       {
         title: "Tags",
         url: "/articles/tags",
-        allowedRoles: ["ADMIN"],
+        allowedRoles: [
+          "ADMIN",
+          "MARKETING_EDITOR",
+          "TECHNICAL_EDITOR",
+          "VIEWER",
+        ],
       },
     ],
   },
@@ -99,12 +103,12 @@ export const menuItems: MenuItem[] = [
     icon: Calendar,
     allowedRoles: ["ADMIN", "MARKETING_EDITOR", "TECHNICAL_EDITOR", "VIEWER"],
   },
-  {
-    title: "Banners",
-    url: "/banners",
-    icon: Image,
-    allowedRoles: ["ADMIN", "MARKETING_EDITOR", "TECHNICAL_EDITOR", "VIEWER"],
-  },
+  // {
+  //   title: "Banners",
+  //   url: "/banners",
+  //   icon: Image,
+  //   allowedRoles: ["ADMIN", "MARKETING_EDITOR", "TECHNICAL_EDITOR", "VIEWER"],
+  // },
   {
     title: "Media",
     url: "/media",

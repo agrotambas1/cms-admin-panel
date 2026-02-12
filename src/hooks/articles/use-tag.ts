@@ -11,16 +11,24 @@ import {
 } from "@/validations/article/tag-validation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AxiosError } from "axios";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 interface useTagsParams extends TagFilters {
   page: number;
   limit: number;
+  sortBy?: string;
+  order?: "asc" | "desc";
 }
 
-export function useTags({ search, page, limit }: useTagsParams) {
+export function useTags({
+  search,
+  page,
+  limit,
+  sortBy = "createdAt",
+  order = "desc",
+}: useTagsParams) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,53 +38,40 @@ export function useTags({ search, page, limit }: useTagsParams) {
     total: 0,
   });
 
+  const fetchTags = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      const { data } = await cmsApi.get("/article-tags", {
+        params: {
+          search,
+          page,
+          limit,
+          sortBy,
+          order,
+        },
+      });
+
+      setTags(data.data || data.tags || data);
+      setPagination({
+        page: data.meta.page,
+        limit: data.meta.limit,
+        total: data.meta.total,
+      });
+      setError(null);
+    } catch (error) {
+      console.error(error);
+      setError("Failed to fetch tags");
+    } finally {
+      setLoading(false);
+    }
+  }, [search, page, limit, sortBy, order]);
+
   useEffect(() => {
-    const fetchTags = async () => {
-      try {
-        setLoading(true);
-
-        const { data } = await cmsApi.get("/article-tags", {
-          params: {
-            search,
-            page,
-            limit,
-          },
-        });
-
-        setTags(data.data || data.tags || data);
-        setPagination({
-          page: data.meta.page,
-          limit: data.meta.limit,
-          total: data.meta.total,
-        });
-        setError(null);
-      } catch (error) {
-        console.error(error);
-        setError("Failed to fetch tags");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchTags();
-  }, [search, page, limit]);
+  }, [fetchTags]);
 
-  const refetch = async () => {
-    const { data } = await cmsApi.get("/article-tags", {
-      params: {
-        search,
-        page,
-        limit,
-      },
-    });
-
-    setTags(data.data || data.tags || data);
-    setPagination({
-      page: data.meta?.page ?? page,
-      limit: data.meta?.limit ?? limit,
-      total: data.meta?.total ?? 0,
-    });
-  };
+  const refetch = () => fetchTags();
 
   return { tags, loading, error, pagination, refetch };
 }
@@ -163,10 +158,16 @@ export function useCreateTag(onSuccess?: () => void) {
 interface UseUpdateTagParams {
   tag: Tag;
   open: boolean;
+  canEdit: boolean;
   onSuccess?: () => void;
 }
 
-export function useUpdateTag({ tag, open, onSuccess }: UseUpdateTagParams) {
+export function useUpdateTag({
+  tag,
+  open,
+  onSuccess,
+  canEdit,
+}: UseUpdateTagParams) {
   const [loading, setLoading] = useState(false);
   const [isSlugTouched, setIsSlugTouched] = useState(false);
 
@@ -204,6 +205,11 @@ export function useUpdateTag({ tag, open, onSuccess }: UseUpdateTagParams) {
   };
 
   const updateTag = async (data: UpdateTagForm) => {
+    if (!canEdit) {
+      toast.error("You are not allowed to update this tag");
+      return { success: false };
+    }
+
     setLoading(false);
     try {
       await cmsApi.put(`/article-tags/${tag.id}`, {
